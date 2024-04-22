@@ -1,6 +1,17 @@
 import { editor, shell } from "$sb/syscalls.ts";
 import { readSetting } from "$sb/lib/settings_page.ts";
 
+/* Improvements:
+ * Allow for the use of an ssh key, credentials and token
+ * Remove the "Github" specific parts since it can be used with any git repository
+ * Add a way to specify the branch to clone
+ * Provide a way to specify how to handle conflicts -- rebase or merge
+ * Add a way to specify the commit message
+ *
+ * Most of these improvements are going to be specified in the settings page
+ */
+
+
 export async function commit(message?: string) {
   if (!message) {
     message = "Snapshot";
@@ -45,8 +56,8 @@ async function sync() {
   console.log("Done!");
 }
 
-export async function githubCloneCommand() {
-  let url = await editor.prompt(`Github project URL:`);
+export async function cloneCommand() {
+  let url = await editor.prompt(`Git repo URL:`);
   if (!url) {
     return;
   }

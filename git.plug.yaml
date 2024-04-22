@@ -6,10 +6,10 @@ functions:
     path: git.ts:autoCommit
     env: server
     cron: "* * * * *"
-  githubCloneCommand:
-    path: "./git.ts:githubCloneCommand"
+  cloneCommand:
+    path: "./git.ts:cloneCommand"
     command:
-      name: "Github: Clone"
+      name: "Git: Clone"
   snapshotCommand:
     path: "./git.ts:snapshotCommand"
     command:
