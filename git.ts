@@ -56,6 +56,13 @@ async function sync() {
   console.log("Done!");
 }
 
+export async function getInfo() {
+  const git = await readSetting("git", {});
+  await editor.flashNotification( 
+    `Auto commit is set to ${git.autoCommitMinutes} minutes and auto sync is set to ${git.autoSync}`
+  );
+}
+
 export async function cloneCommand() {
   let url = await editor.prompt(`Git repo URL:`);
   if (!url) {
