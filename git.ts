@@ -1,6 +1,12 @@
 import { editor, shell } from "$sb/syscalls.ts";
 import { readSetting } from "$sb/lib/settings_page.ts";
 
+enum AuthType {
+  token = "token",
+  UserPass = "userpass",
+  SSHKey = "sshkey",
+}
+
 /* Improvements:
  * Allow for the use of an ssh key, credentials and token
  * Remove the "Github" specific parts since it can be used with any git repository
@@ -61,34 +67,47 @@ export async function infoCommand() {
   await editor.flashNotification( 
     `Auto commit is set to ${git.autoCommitMinutes} minutes and auto sync is set to ${git.autoSync}`
   );
+  await editor.flashNotification(
+    `Token is ${git.token}, name is ${git.name}, email is ${git.email}`
+    );
+}
+
+function runGitCommand(command: string) {
+  const args = command.split(" ");
+  return shell.run("git", args);
 }
 
 export async function cloneCommand() {
-  let url = await editor.prompt(`Git repo URL:`);
-  if (!url) {
-    return;
+  const git = await readSetting("git", {});
+  
+  let url = git.url;
+  let authType: AuthType = git.authType as AuthType;
+  let authData = git.authData; // Token, user:pass, or ssh key location
+  let name = git.name;
+  let email = git.email;
+  let verifyCert = git.verifyCert;
+  // TODO: Handle if the values are not set
+  
+  // Handle authType token first
+  // TODO: Handle other auth types
+  switch (authType) {
+    case AuthType.token:
+      let token = authData;
+      url = url.replace("https://", `https://${token}@`);
+      break;
+    default:
+      await editor.flashNotification("Only token auth is supported right now");
+      break;
   }
-  // Add a config here for this
-  const token = await editor.prompt(`Github token:`);
-  if (!token) {
-    return;
-  }
-  const name = await editor.prompt(`Your name:`);
-  if (!name) {
-    return;
-  }
-  const email = await editor.prompt(`Your email:`);
-  if (!email) {
-    return;
-  }
-  const pieces = url.split("/");
-  pieces[2] = `${token}@${pieces[2]}`;
-  url = pieces.join("/") + ".git";
-  await editor.flashNotification(
-    "Now going to clone the project, this may take some time.",
-  );
+  await editor.flashNotification(`Cloning from ${url}`);
+
   await shell.run("mkdir", ["-p", "_checkout"]);
-  await shell.run("git", ["clone", url, "_checkout"]);
+
+  if (verifyCert === false) {
+    await shell.run("git", ["-c", "http.sslVerify=false", "clone", url, "_checkout"]);
+  } else {
+    await shell.run("git", ["clone", url, "_checkout"]);
+  }
   // Moving all files from _checkout to the current directory, which will complain a bit about . and .., but we'll ignore that
   await shell.run("bash", ["-c", "mv -f _checkout/{.,}* . 2> /dev/null; true"]);
   await shell.run("rm", ["-rf", "_checkout"]);

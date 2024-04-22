@@ -7,11 +7,11 @@ functions:
     env: server
     cron: "* * * * *"
   infoCommand:
-    path: "./git.ts:infoCommand"
+    path: git.ts:infoCommand
     command:
       name: "Git: Info"
   cloneCommand:
-    path: "./git.ts:cloneCommand"
+    path: git.ts:cloneCommand
     command:
       name: "Git: Clone"
   snapshotCommand:
@@ -22,3 +22,4 @@ functions:
     path: "./git.ts:syncCommand"
     command:
       name: "Git: Sync"
+
