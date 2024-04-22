@@ -61,6 +61,7 @@ export async function cloneCommand() {
   if (!url) {
     return;
   }
+  // Add a config here for this
   const token = await editor.prompt(`Github token:`);
   if (!token) {
     return;
