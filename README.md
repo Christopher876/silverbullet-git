@@ -34,10 +34,22 @@ This will automatically commit (and if `autoSync` is set to `true` perform a syn
 Open your `PLUGS` note in SilverBullet and add this plug to the list:
 
 ```
-- github:silverbulletmd/silverbullet-git/git.plug.js
+- github:Christopher876/silverbullet-git/git.plug.js
 ```
 
 Then run the `Plugs: Update` command and off you go!
+
+## Sample Configuration
+
+```yaml
+git:
+  url: https://gitea.local/user/Notes.git
+  authType: token
+  authData: 00000
+  name: Chris
+  email: chris@example.com
+  verifyCert: false
+```
 
 ## To Build
 
