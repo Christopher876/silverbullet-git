@@ -7,7 +7,7 @@ functions:
     env: server
     cron: "* * * * *"
   infoCommand:
-    path: "./git.ts:getInfo"
+    path: "./git.ts:infoCommand"
     command:
       name: "Git: Info"
   cloneCommand:
