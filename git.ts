@@ -17,38 +17,18 @@ enum AuthType {
  * Most of these improvements are going to be specified in the settings page
  */
 
-export async function commit(message?: string) {
-  if (!message) {
-    message = "Snapshot";
-  }
-  console.log(
-    "Snapshotting the current space to git with commit message",
-    message,
-  );
-  const { code } = await shell.run("git", ["add", "./*"]);
-  console.log("Git add code", code);
-  try {
-    await shell.run("git", ["commit", "-a", "-m", message]);
-  } catch {
-    // We can ignore, this happens when there's no changes to commit
-  }
+async function pull() {
+  console.log("Pulling from remote");
+  let sslVerify = await getGitSSLVerify();
+  let conflictResolution = await getGitPullConflictResolution();
+  await runGitCommand(`${sslVerify} pull ${conflictResolution}`);
   console.log("Done!");
 }
 
-export async function snapshotCommand() {
-  let revName = await editor.prompt(`Revision name:`);
-  if (!revName) {
-    revName = "Snapshot";
-  }
-  console.log("Revision name", revName);
-  await commit(revName);
-  await editor.flashNotification("Done!");
-}
-
-export async function syncCommand() {
-  await editor.flashNotification("Syncing with git");
-  await sync();
-  await editor.flashNotification("Git sync complete!");
+async function push() {
+  console.log("Pushing to remote");
+  await runGitCommand("push");
+  console.log("Done!");
 }
 
 async function getGitSSLVerify() {
@@ -71,16 +51,6 @@ async function sync() {
   console.log("Done!");
 }
 
-export async function infoCommand() {
-  const git = await readSetting("git", {});
-  await editor.flashNotification( 
-    `Auto commit is set to ${git.autoCommitMinutes} minutes and auto sync is set to ${git.autoSync}`
-  );
-  await editor.flashNotification(
-    `Token is ${git.token}, name is ${git.name}, email is ${git.email}`
-    );
-}
-
 async function runGitCommand(command: string) {
   const args = command.split(" ");
   return shell.run("git", args);
@@ -95,6 +65,51 @@ function verifyGitVariablesAreSet(git: any) {
     }
   }
   return true;
+}
+
+async function commit(message?: string) {
+  if (!message) {
+    message = "Snapshot";
+  }
+  console.log(
+    "Snapshotting the current space to git with commit message",
+    message,
+  );
+  const { code } = await shell.run("git", ["add", "./*"]);
+  console.log("Git add code", code);
+  try {
+    await shell.run("git", ["commit", "-a", "-m", message]);
+  } catch {
+    // We can ignore, this happens when there's no changes to commit
+  }
+  console.log("Done!");
+}
+
+// Commands
+export async function snapshotCommand() {
+  let revName = await editor.prompt(`Revision name:`);
+  if (!revName) {
+    revName = "Snapshot";
+  }
+  console.log("Revision name", revName);
+  await commit(revName);
+  await editor.flashNotification("Done!");
+}
+
+export async function syncCommand() {
+  await editor.flashNotification("Syncing with git");
+  await sync();
+  await editor.flashNotification("Git sync complete!");
+}
+
+export async function infoCommand() {
+  const git = await readSetting("git", {});
+  await editor.flashNotification( 
+    `Auto commit is set to ${git.autoCommitMinutes} minutes and auto sync is set to ${git.autoSync}`
+  );
+  await editor.flashNotification(
+    `Token is ${git.token}, name is ${git.name}, email is ${git.email}`
+    );
 }
 
 export async function cloneCommand() {
@@ -159,13 +174,6 @@ export async function cloneCommand() {
   );
 }
 
-async function pull() {
-  console.log("Pulling from remote");
-  let sslVerify = await getGitSSLVerify();
-  let conflictResolution = await getGitPullConflictResolution();
-  await runGitCommand(`${sslVerify} pull ${conflictResolution}`);
-  console.log("Done!");
-}
 
 // TODO: This should be a auto sync function
 // Be able to specify the branch to pull from, if you want to both pull and push, etc
@@ -180,7 +188,25 @@ export async function autoPull() {
     return;
   }
 
-  await pull();
+  let operations = git.operations;
+  if (!operations) {
+    operations = ["pull"];
+  }
+  operations.sort();
+  for (let operation of operations) {
+    switch (operation) {
+      case "pull":
+        await pull();
+        break;
+      case "push":
+        await commit("Auto commit");
+        await push();
+        break;
+      default:
+        await editor.flashNotification(`Unknown operation ${operation}`);
+        break;
+    }
+  }
 }
 
 export async function autoCommit() {
