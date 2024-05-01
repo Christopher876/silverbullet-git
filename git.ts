@@ -1,6 +1,5 @@
 import { editor, shell } from "$sb/syscalls.ts";
 import { readSetting } from "$sb/lib/settings_page.ts";
-import * as gitFunctions from "$sb/lib/gitFunctions.ts";
 
 enum AuthType {
   token = "token",
@@ -57,6 +56,11 @@ async function getGitSSLVerify() {
   return git.verifyCert ? "" : "-c http.sslVerify=false";
 }
 
+async function getGitPullConflictResolution() {
+  const git = await readSetting("git", {});
+  return git.resolveConflict ? `--${git.resolveConflict}` : "";
+}
+
 async function sync() {
   console.log("Going to sync with git");
   await commit();
@@ -111,7 +115,9 @@ export async function cloneCommand() {
   let authData = git.authData; // Token, user:pass, or ssh key location
   let name = git.name;
   let email = git.email;
-  let verifyCert = git.verifyCert;
+  let verifyCert = await getGitSSLVerify();
+  let resolveConflict = git.resolveConflict; // rebase or merge
+  let operations = git.operations; // pull, push, or both
   
   // Handle authType token first
   // TODO: Handle other auth types
@@ -138,8 +144,7 @@ export async function cloneCommand() {
   
   // Disable SSL verification if configured
   // Not necessary in an environment where your git server is running in your docker network
-  let sslVerify = await getGitSSLVerify();
-  await runGitCommand(`clone ${sslVerify} ${url} _checkout`);
+  await runGitCommand(`clone ${verifyCert} ${url} _checkout`);
 
   // Moving all files from _checkout to the current directory, which will complain a bit about . and .., but we'll ignore that
   await shell.run("bash", ["-c", "mv -f _checkout/{.,}* . 2> /dev/null; true"]);
@@ -157,7 +162,8 @@ export async function cloneCommand() {
 async function pull() {
   console.log("Pulling from remote");
   let sslVerify = await getGitSSLVerify();
-  await runGitCommand(`${sslVerify} pull`);
+  let conflictResolution = await getGitPullConflictResolution();
+  await runGitCommand(`${sslVerify} pull ${conflictResolution}`);
   console.log("Done!");
 }
 
@@ -174,7 +180,6 @@ export async function autoPull() {
     return;
   }
 
-  console.log("Auto pull time!");
   await pull();
 }
 
