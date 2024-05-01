@@ -1,5 +1,6 @@
 import { editor, shell } from "$sb/syscalls.ts";
 import { readSetting } from "$sb/lib/settings_page.ts";
+import * as gitFunctions from "$sb/lib/gitFunctions.ts";
 
 enum AuthType {
   token = "token",
@@ -16,7 +17,6 @@ enum AuthType {
  *
  * Most of these improvements are going to be specified in the settings page
  */
-
 
 export async function commit(message?: string) {
   if (!message) {
@@ -36,12 +36,6 @@ export async function commit(message?: string) {
   console.log("Done!");
 }
 
-async function pull() {
-  console.log("Pulling from remote");
-  await shell.run("git", ["pull"]);
-  console.log("Done!");
-}
-
 export async function snapshotCommand() {
   let revName = await editor.prompt(`Revision name:`);
   if (!revName) {
@@ -56,6 +50,11 @@ export async function syncCommand() {
   await editor.flashNotification("Syncing with git");
   await sync();
   await editor.flashNotification("Git sync complete!");
+}
+
+async function getGitSSLVerify() {
+  const git = await readSetting("git", {});
+  return git.verifyCert ? "" : "-c http.sslVerify=false";
 }
 
 async function sync() {
@@ -139,10 +138,8 @@ export async function cloneCommand() {
   
   // Disable SSL verification if configured
   // Not necessary in an environment where your git server is running in your docker network
-  if (verifyCert === false) {
-    await runGitCommand("config --global http.sslVerify false");
-  }
-  await runGitCommand(`clone ${url} _checkout`);
+  let sslVerify = await getGitSSLVerify();
+  await runGitCommand(`clone ${sslVerify} ${url} _checkout`);
 
   // Moving all files from _checkout to the current directory, which will complain a bit about . and .., but we'll ignore that
   await shell.run("bash", ["-c", "mv -f _checkout/{.,}* . 2> /dev/null; true"]);
@@ -155,6 +152,30 @@ export async function cloneCommand() {
   await editor.flashNotification(
     "Done. Now just wait for sync to kick in to get all the content.",
   );
+}
+
+async function pull() {
+  console.log("Pulling from remote");
+  let sslVerify = await getGitSSLVerify();
+  await runGitCommand(`${sslVerify} pull`);
+  console.log("Done!");
+}
+
+// TODO: This should be a auto sync function
+// Be able to specify the branch to pull from, if you want to both pull and push, etc
+export async function autoPull() {
+  const git = await readSetting("git", {});
+  if (!git.autoPullMinutes) {
+    return;
+  }
+  
+  const currentMinutes = new Date().getMinutes();
+  if (currentMinutes % git.autoPullMinutes !== 0) {
+    return;
+  }
+
+  console.log("Auto pull time!");
+  await pull();
 }
 
 export async function autoCommit() {

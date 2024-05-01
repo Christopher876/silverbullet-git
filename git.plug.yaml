@@ -6,6 +6,10 @@ functions:
     path: git.ts:autoCommit
     env: server
     cron: "* * * * *"
+  autoPull:
+    path: git.ts:autoPull
+    env: server
+    cron: "* * * * *"
   infoCommand:
     path: git.ts:infoCommand
     command:
