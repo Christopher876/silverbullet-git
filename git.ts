@@ -20,14 +20,15 @@ enum AuthType {
 async function pull() {
   console.log("Pulling from remote");
   let sslVerify = await getGitSSLVerify();
-  let conflictResolution = await getGitPullConflictResolution();
-  await runGitCommand(`${sslVerify} pull ${conflictResolution}`);
+  let gitPullArguments = await getGitPullArguments();
+  await runGitCommand(`${sslVerify} pull ${gitPullArguments}`);
   console.log("Done!");
 }
 
 async function push() {
   console.log("Pushing to remote");
-  await runGitCommand("push");
+  let sslVerify = await getGitSSLVerify();
+  await runGitCommand(`${sslVerify} push`);
   console.log("Done!");
 }
 
@@ -36,9 +37,11 @@ async function getGitSSLVerify() {
   return git.verifyCert ? "" : "-c http.sslVerify=false";
 }
 
-async function getGitPullConflictResolution() {
+async function getGitPullArguments() {
   const git = await readSetting("git", {});
-  return git.resolveConflict ? `--${git.resolveConflict}` : "";
+  const resolveConflict = git.resolveConflict ? `--${git.resolveConflict}` : "";
+  const autoStash = git.autoStash ? "--autostash" : "";
+  return `${resolveConflict} ${autoStash}`;
 }
 
 async function sync() {
@@ -57,7 +60,7 @@ async function runGitCommand(command: string) {
 }
 
 function verifyGitVariablesAreSet(git: any) {
-  const VARIABLES = ["url", "authType", "authData", "name", "email", "verifyCert"];
+  const VARIABLES = ["url", "authType", "authData", "name", "email", "verifyCert", "autoStash"];
   const gitVariables = Object.keys(git);
   for (let variable of VARIABLES) {
     if (!gitVariables.includes(variable)) {
@@ -131,6 +134,7 @@ export async function cloneCommand() {
   let name = git.name;
   let email = git.email;
   let verifyCert = await getGitSSLVerify();
+  let autoStash = git.autoStash; // Stash changes before pulling
   let resolveConflict = git.resolveConflict; // rebase or merge
   let operations = git.operations; // pull, push, or both
   
